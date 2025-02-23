@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bouncing Balls Animation</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #f0f0f0;
+        }
+        canvas {
+            border: 2px solid #333;
+            background: #fff;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size
+        canvas.width = 800;
+        canvas.height = 500;
+
+        // Base Constants
+        const BASE_GRAVITY = 0.2;
+        const BASE_FRICTION = 0.99;
+        const BASE_RESTITUTION = 0.8;
+
+        // Ball class
+        class Ball {
+            constructor() {
+                this.radius = Math.random() * 15 + 10; // Random radius between 10 and 25
+                this.mass = Math.random() * 4 + 1; // Random mass between 1 and 5
+
+                // Random physical properties
+                this.type = Math.random() < 0.33 ? 'floppy' : 
+                           Math.random() < 0.5 ? 'bouncy' : 
+                           Math.random() < 0.75 ? 'light' : 'normal';
+
+                // Set properties based on type
+                switch(this.type) {
+                    case 'floppy':
+                        this.restitution = 0.3; // Less bouncy
+                        this.friction = 0.95;    // More friction
+                        this.gravityScale = 1.2; // Slightly heavier feel
+                        this.squishFactor = 0.3; // Can squish more
+                        break;
+                    case 'bouncy':
+                        this.restitution = 0.95; // Very bouncy
+                        this.friction = 0.99;    // Less friction
+                        this.gravityScale = 1.0; // Normal gravity
+                        this.squishFactor = 0.1; // Rigid
+                        break;
+                    case 'light':
+                        this.restitution = 0.8;  // Normal bounce
+                        this.friction = 0.995;   // Very little friction
+                        this.gravityScale = 0.5; // Half gravity
+                        this.squishFactor = 0.15; // Slightly squishy
+                        break;
+                    default: // normal
+                        this.restitution = 0.8;  // Normal bounce
+                        this.friction = 0.99;    // Normal friction
+                        this.gravityScale = 1.0; // Normal gravity
+                        this.squishFactor = 0.1; // Normal squish
+                }
+
+                this.x = Math.random() * (canvas.width - this.radius * 2) + this.radius;
+                this.y = Math.random() * (canvas.height - this.radius * 2) + this.radius;
+                this.dx = (Math.random() - 0.5) * 6;
+                this.dy = (Math.random() - 0.5) * 6;
+                
+                // Visual properties based on type
+                const baseColors = {
+                    'floppy': [188, 132, 188],  // Muted purple for floppy
+                    'bouncy': [132, 188, 132],  // Muted green for bouncy
+                    'light': [132, 132, 188],   // Muted blue for light
+                    'normal': [188, 132, 132]   // Muted red for normal
+                };
+                
+                const baseColor = baseColors[this.type];
+                const opacity = 0.5 + (this.mass / 5) * 0.5;
+                this.color = `rgba(${baseColor[0]}, ${baseColor[1]}, ${baseColor[2]}, ${opacity})`;
+                
+                // For squish animation
+                this.scaleX = 1;
+                this.scaleY = 1;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.scale(this.scaleX, this.scaleY);
+                
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                
+                // Add a subtle shadow to indicate mass
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+                ctx.shadowBlur = this.mass * 2;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                
+                ctx.closePath();
+                ctx.restore();
+            }
+
+            update(balls) {
+                // Apply gravity with individual scale
+                this.dy += BASE_GRAVITY * this.mass * this.gravityScale;
+
+                // Apply individual friction
+                this.dx *= this.friction;
+                this.dy *= this.friction;
+
+                const nextX = this.x + this.dx;
+                const nextY = this.y + this.dy;
+
+                // Reset squish
+                this.scaleX = 1;
+                this.scaleY = 1;
+
+                // Bounce off walls with squish effect
+                if (nextX + this.radius > canvas.width || nextX - this.radius < 0) {
+                    this.dx = -this.dx * this.restitution;
+                    // Horizontal squish
+                    this.scaleX = 1 - Math.abs(this.dx) * this.squishFactor;
+                    this.scaleY = 1 + Math.abs(this.dx) * this.squishFactor;
+                    
+                    if (nextX + this.radius > canvas.width) {
+                        this.x = canvas.width - this.radius;
+                    }
+                    if (nextX - this.radius < 0) {
+                        this.x = this.radius;
+                    }
+                }
+
+                if (nextY + this.radius > canvas.height || nextY - this.radius < 0) {
+                    this.dy = -this.dy * this.restitution;
+                    // Vertical squish
+                    this.scaleY = 1 - Math.abs(this.dy) * this.squishFactor;
+                    this.scaleX = 1 + Math.abs(this.dy) * this.squishFactor;
+                    
+                    if (nextY + this.radius > canvas.height) {
+                        this.y = canvas.height - this.radius;
+                    }
+                    if (nextY - this.radius < 0) {
+                        this.y = this.radius;
+                    }
+                }
+
+                // Ball collisions
+                for (let ball of balls) {
+                    if (ball === this) continue;
+
+                    const dx = ball.x - this.x;
+                    const dy = ball.y - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < this.radius + ball.radius) {
+                        const normalX = dx / distance;
+                        const normalY = dy / distance;
+
+                        const relativeVelocityX = this.dx - ball.dx;
+                        const relativeVelocityY = this.dy - ball.dy;
+                        
+                        const velocityDotProduct = (relativeVelocityX * normalX + relativeVelocityY * normalY);
+                        
+                        // Average restitution of both balls
+                        const combinedRestitution = (this.restitution + ball.restitution) / 2;
+                        const impulse = 2 * velocityDotProduct / (this.mass + ball.mass) * combinedRestitution;
+                        
+                        this.dx -= (impulse * ball.mass * normalX);
+                        this.dy -= (impulse * ball.mass * normalY);
+                        ball.dx += (impulse * this.mass * normalX);
+                        ball.dy += (impulse * this.mass * normalY);
+
+                        // Squish effect on collision
+                        const collisionSpeed = Math.sqrt(relativeVelocityX * relativeVelocityX + relativeVelocityY * relativeVelocityY);
+                        const squishAmount = collisionSpeed * Math.max(this.squishFactor, ball.squishFactor) * 0.1;
+                        
+                        this.scaleX = 1 - Math.abs(normalX) * squishAmount;
+                        this.scaleY = 1 - Math.abs(normalY) * squishAmount;
+                        ball.scaleX = 1 - Math.abs(normalX) * squishAmount;
+                        ball.scaleY = 1 - Math.abs(normalY) * squishAmount;
+
+                        // Separate balls
+                        const overlap = (this.radius + ball.radius - distance) / 2;
+                        const separationX = overlap * normalX;
+                        const separationY = overlap * normalY;
+                        
+                        const totalMass = this.mass + ball.mass;
+                        const thisRatio = ball.mass / totalMass;
+                        const ballRatio = this.mass / totalMass;
+                        
+                        this.x -= separationX * thisRatio;
+                        this.y -= separationY * thisRatio;
+                        ball.x += separationX * ballRatio;
+                        ball.y += separationY * ballRatio;
+                    }
+                }
+
+                // Update position
+                this.x += this.dx;
+                this.y += this.dy;
+
+                this.draw();
+            }
+        }
+
+        // Create multiple balls
+        const balls = Array.from({ length: 20 }, () => new Ball());
+
+        // Animation loop
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            balls.forEach(ball => ball.update(balls));
+            requestAnimationFrame(animate);
+        }
+
+        // Start animation
+        animate();
+    </script>
+</body>
+</html> 
