@@ -50,67 +50,166 @@ const TimelineSlider = styled.input`
 `;
 
 const Layout = () => {
-  const [shapes, setShapes] = useState([]);
+  console.log('Layout component rendering');
+  const [elements, setElements] = useState([]);
+  const [componentDefinitions, setComponentDefinitions] = useState({});
+  const [frames, setFrames] = useState([]);
   const [selectedId, selectShape] = useState(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const animationFrameId = useRef(null);
 
+  const selectedElement = elements.find((el) => el.id === selectedId);
+
+  useEffect(() => {
+    console.log('Layout - selectedId changed:', selectedId);
+    console.log('Layout - elements after selectedId change:', elements);
+    console.log('Layout - componentDefinitions after selectedId change:', componentDefinitions);
+  }, [selectedId, elements, componentDefinitions]);
+
+  const addFrame = () => {
+    const newFrame = {
+      type: 'frame',
+      id: `frame${frames.length + 1}`,
+      x: 0,
+      y: 0,
+      width: 400,
+      height: 300,
+      name: `Frame ${frames.length + 1}`,
+    };
+    setFrames([...frames, newFrame]);
+    selectShape(newFrame.id);
+  };
+
   const addRectangle = () => {
     const newRect = {
-      type: 'rect',
+      type: 'shape-rect',
       x: 50,
       y: 50,
       width: 100,
       height: 100,
       fill: '#1E90FF',
-      id: `rect${shapes.length + 1}`,
+      id: `rect${elements.length + 1}`,
       animation: {},
     };
-    setShapes([...shapes, newRect]);
+    setElements([...elements, newRect]);
     selectShape(newRect.id);
   };
 
   const addCircle = () => {
     const newCircle = {
-      type: 'circle',
+      type: 'shape-circle',
       x: 150,
       y: 150,
       radius: 50,
       fill: '#FF8C00',
-      id: `circle${shapes.length + 1}`,
+      id: `circle${elements.length + 1}`,
       animation: {},
     };
-    setShapes([...shapes, newCircle]);
+    setElements([...elements, newCircle]);
     selectShape(newCircle.id);
   };
 
-  const updateShape = (updatedShape) => {
-    const updatedShapes = shapes.slice();
-    const index = updatedShapes.findIndex((s) => s.id === updatedShape.id);
-    updatedShapes[index] = updatedShape;
-    setShapes(updatedShapes);
+  const updateElement = (updatedElement) => {
+    const updatedElements = elements.slice();
+    const index = updatedElements.findIndex((el) => el.id === updatedElement.id);
+    updatedElements[index] = updatedElement;
+    setElements(updatedElements);
+  };
+
+  const updateFrame = (updatedFrame) => {
+    setFrames((prevFrames) =>
+      prevFrames.map((frame) =>
+        frame.id === updatedFrame.id ? updatedFrame : frame
+      )
+    );
+  };
+
+  const createComponentDefinition = () => {
+    const selectedElements = elements.filter((el) => el.id === selectedId);
+    
+    if (selectedElements.length === 0) return;
+
+    const newComponentId = `component${Object.keys(componentDefinitions).length + 1}`;
+    const newComponentDefinition = {
+      id: newComponentId,
+      variants: {
+        'default': {
+          elements: selectedElements.map(el => ({
+            ...el,
+            x: el.x - selectedElements[0].x, // Make x relative to component origin
+            y: el.y - selectedElements[0].y, // Make y relative to component origin
+          })),
+        },
+      },
+    };
+
+    setComponentDefinitions((prevDefs) => {
+      const updatedDefs = {
+        ...prevDefs,
+        [newComponentId]: newComponentDefinition,
+      };
+      console.log('Layout - createComponentDefinition: Updated componentDefinitions:', updatedDefs);
+      return updatedDefs;
+    });
+
+    // Replace selected elements with a single component instance
+    const newElements = elements.filter((el) => !selectedElements.some(selEl => selEl.id === el.id));
+    const newComponentInstance = {
+      type: 'component-instance',
+      id: `${newComponentId}-instance-${elements.length + 1}`,
+      componentId: newComponentId,
+      activeVariant: 'default',
+      x: selectedElements[0].x, // Take the position of the first selected element
+      y: selectedElements[0].y,
+      animation: {}, // Component instances can have their own animations
+    };
+    setElements([...newElements, newComponentInstance]);
+    selectShape(newComponentInstance.id);
+  };
+
+  console.log('Layout - selectedElement:', selectedElement);
+  console.log('Layout - componentDefinitions:', componentDefinitions);
+
+  const createVariant = (componentId, newVariantName) => {
+    setComponentDefinitions((prevDefs) => {
+      const component = prevDefs[componentId];
+      if (!component) return prevDefs;
+
+      const defaultVariantElements = component.variants.default.elements.map(el => ({ ...el, id: `${el.id}-${newVariantName}` }));
+
+      return {
+        ...prevDefs,
+        [componentId]: {
+          ...component,
+          variants: {
+            ...component.variants,
+            [newVariantName]: { elements: defaultVariantElements },
+          },
+        },
+      };
+    });
   };
 
   const addKeyframe = (property, duration, delay, easing) => {
-    const selectedShape = shapes.find((s) => s.id === selectedId);
-    if (!selectedShape) return;
+
+    if (!selectedElement) return;
 
     const newKeyframe = {
       time: currentTime,
-      value: selectedShape[property],
+      value: selectedElement[property],
       duration: duration,
       delay: delay,
       easing: easing,
     };
 
-    const animation = selectedShape.animation || {};
+    const animation = selectedElement.animation || {};
     const track = animation[property] || [];
 
     const updatedTrack = [...track, newKeyframe].sort((a, b) => a.time - b.time);
 
-    updateShape({
-      ...selectedShape,
+    updateElement({
+      ...selectedElement,
       animation: {
         ...animation,
         [property]: updatedTrack,
@@ -153,13 +252,11 @@ const Layout = () => {
     };
   }, [isPlaying]);
 
-  const selectedShape = shapes.find((s) => s.id === selectedId);
-
   return (
     <Grid>
       <LayerPanelContainer>
         <LayerPanel
-          shapes={shapes}
+          elements={elements}
           selectedId={selectedId}
           onSelect={selectShape}
         />
@@ -167,19 +264,28 @@ const Layout = () => {
       <CanvasContainer>
         <button onClick={addRectangle}>Add Rectangle</button>
         <button onClick={addCircle}>Add Circle</button>
+        <button onClick={addFrame}>Add Frame</button>
+        <button onClick={createComponentDefinition}>Create Component</button>
         <Canvas
-          shapes={shapes}
+          elements={elements}
           selectedId={selectedId}
           onSelect={selectShape}
-          onChange={updateShape}
+          onChange={updateElement}
           currentTime={currentTime}
+          componentDefinitions={componentDefinitions}
+          canvasWidth={window.innerWidth - 500}
+          canvasHeight={window.innerHeight - 200}
+          frames={frames}
+          updateFrame={updateFrame}
         />
       </CanvasContainer>
       <InspectorPanelContainer>
         <InspectorPanel
-          selectedShape={selectedShape}
-          onUpdate={updateShape}
+          selectedElement={selectedElement}
+          onUpdate={updateElement}
           onAddKeyframe={addKeyframe}
+          componentDefinitions={componentDefinitions || {}}
+          createVariant={createVariant}
         />
       </InspectorPanelContainer>
       <TimelinePanelContainer>
@@ -194,7 +300,7 @@ const Layout = () => {
           />
         </TimelineControls>
         <TimelinePanel
-          selectedShape={selectedShape}
+          selectedElement={selectedElement}
           currentTime={currentTime}
         />
       </TimelinePanelContainer>

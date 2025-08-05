@@ -1,184 +1,76 @@
-import React, { useEffect, useRef } from 'react';
-import { Stage, Layer, Rect, Transformer } from 'react-konva';
-import Konva from 'konva';
-import CircleShape from './Circle';
+import React, { useEffect, useRef, useMemo } from 'react';
+import { Stage, Layer, Rect, Group } from 'react-konva';
+import { useDrop } from 'react-dnd';
 
-const Rectangle = ({ shapeProps, isSelected, onSelect, onChange, currentTime }) => {
-  const shapeRef = useRef();
-  const trRef = useRef();
+const renderShape = React.memo((shape, setActiveFrame, links, canvasSize, transitions, activeState) => {
+  const shapeRef = useRef(null);
 
   useEffect(() => {
-    if (isSelected) {
-      trRef.current.nodes([shapeRef.current]);
-      trRef.current.getLayer().batchDraw();
-    }
-  }, [isSelected]);
-
-  useEffect(() => {
-    if (shapeProps.animation) {
-      Object.keys(shapeProps.animation).forEach((prop) => {
-        const keyframes = shapeProps.animation[prop];
-        if (keyframes.length === 0) return;
-
-        let interpolatedValue = keyframes[0].value; // Default to first keyframe value
-
-        if (prop === 'fill') {
-          // For colors, find the last keyframe whose time is <= currentTime
-          let activeKeyframe = keyframes[0];
-          for (let i = 0; i < keyframes.length; i++) {
-            if (keyframes[i].time <= currentTime) {
-              activeKeyframe = keyframes[i];
-            } else {
-              break;
-            }
-          }
-          interpolatedValue = activeKeyframe.value;
-        } else if (keyframes.length === 1) {
-          interpolatedValue = keyframes[0].value;
-        } else {
-          let kf1 = null;
-          let kf2 = null;
-
-          // Find the two keyframes to interpolate between
-          for (let i = 0; i < keyframes.length; i++) {
-            if (keyframes[i].time <= currentTime) {
-              kf1 = keyframes[i];
-            }
-            if (keyframes[i].time > currentTime) {
-              kf2 = keyframes[i];
-              break;
-            }
-          }
-
-          if (!kf1) {
-            // Current time is before the first keyframe
-            interpolatedValue = keyframes[0].value;
-          } else if (!kf2) {
-            // Current time is after the last keyframe
-            interpolatedValue = keyframes[keyframes.length - 1].value;
-          } else {
-            // Interpolate between kf1 and kf2
-            const animationStartTime = kf1.time + (kf1.delay || 0);
-            const animationEndTime = animationStartTime + (kf1.duration || 0);
-
-            if (currentTime < animationStartTime) {
-              interpolatedValue = kf1.value;
-            } else if (currentTime > animationEndTime) {
-              interpolatedValue = kf2.value;
-            } else {
-              const t = (currentTime - animationStartTime) / (kf1.duration || 1); // Avoid division by zero
-              const easingFunction = Konva.Easings[kf1.easing] || Konva.Easings.Linear;
-              const easedT = easingFunction(t);
-              interpolatedValue = kf1.value + easedT * (kf2.value - kf1.value);
-            }
-          }
+    const node = shapeRef.current;
+    if (node) {
+      const handleMouseMove = (e) => {
+        const transition = transitions.find(t => t.from === activeState && t.trigger === 'mouse-follow');
+        if (transition) {
+          // Implement mouse follow logic here
         }
-        shapeRef.current.setAttr(prop, interpolatedValue);
-      });
-      shapeRef.current.getLayer().batchDraw();
+      };
+      node.getStage().on('mousemove', handleMouseMove);
+      return () => node.getStage().off('mousemove', handleMouseMove);
     }
-  }, [currentTime, shapeProps.animation]);
+  }, [transitions]);
 
+  const onClick = () => {
+    if (links[shape.id]) {
+      setActiveFrame(links[shape.id]);
+    }
+  };
 
+  const getPosition = () => {
+    let { x, y } = shape;
+    if (shape.constraints) {
+      if (shape.constraints.right) {
+        x = canvasSize.width - shape.width - x;
+      }
+      if (shape.constraints.bottom) {
+        y = canvasSize.height - shape.height - y;
+      }
+    }
+    return { x, y };
+  };
+
+  return <Rect ref={shapeRef} key={shape.id} {...shape} {...getPosition()} id={shape.id} onClick={onClick} onTap={onClick} tabIndex={0} aria-label={`Shape ${shape.id}`} />;
+});
+
+const renderComponent = React.memo((component, shapes, setActiveFrame, links, canvasSize, transitions, activeState) => {
   return (
-    <React.Fragment>
-      <Rect
-        onClick={onSelect}
-        onTap={onSelect}
-        ref={shapeRef}
-        {...shapeProps}
-        draggable
-        onDragEnd={(e) => {
-          onChange({
-            ...shapeProps,
-            x: e.target.x(),
-            y: e.target.y(),
-          });
-        }}
-        onTransformEnd={(e) => {
-          const node = shapeRef.current;
-          const scaleX = node.scaleX();
-          const scaleY = node.scaleY();
-
-          node.scaleX(1);
-          node.scaleY(1);
-          onChange({
-            ...shapeProps,
-            x: node.x(),
-            y: node.y(),
-            width: Math.max(5, node.width() * scaleX),
-            height: Math.max(5, node.height() * scaleY),
-          });
-        }}
-      />
-      {isSelected && (
-        <Transformer
-          ref={trRef}
-          boundBoxFunc={(oldBox, newBox) => {
-            if (newBox.width < 5 || newBox.height < 5) {
-              return oldBox;
-            }
-            return newBox;
-          }}
-        />
-      )}
-    </React.Fragment>
+    <Group key={component.id} tabIndex={0} aria-label={`Component ${component.id}`}>
+      {component.shapes.map(shapeId => renderShape(shapes.find(s => s.id === shapeId), setActiveFrame, links, canvasSize, transitions, activeState))}
+      {component.children.map(child => renderComponent(child, shapes, setActiveFrame, links, canvasSize, transitions, activeState))}
+    </Group>
   );
-};
+});
 
-const Canvas = ({ shapes, selectedId, onSelect, onChange, currentTime }) => {
+const Canvas = ({ shapes, components, layerRef, setActiveFrame, links, canvasSize, transitions, onDrop, activeState }) => {
+  const [, drop] = useDrop(() => ({
+    accept: 'libraryItem',
+    drop: (item, monitor) => {
+      const offset = monitor.getClientOffset();
+      onDrop(item, offset);
+    },
+  }));
+
+  const topLevelComponents = useMemo(() => Object.values(components).filter(c => !Object.values(components).some(p => p.children.includes(c.id))), [components]);
+  const unassignedShapes = useMemo(() => shapes.filter(shape => !Object.values(components).some(c => c.shapes.includes(shape.id))), [shapes, components]);
+
   return (
-    <Stage
-      width={window.innerWidth - 500}
-      height={window.innerHeight - 200}
-      onMouseDown={(e) => {
-        const clickedOnEmpty = e.target === e.target.getStage();
-        if (clickedOnEmpty) {
-          onSelect(null);
-        }
-      }}
-    >
-      <Layer>
-        {shapes.map((shape, i) => {
-          if (shape.type === 'rect') {
-            return (
-              <Rectangle
-                key={i}
-                shapeProps={shape}
-                isSelected={shape.id === selectedId}
-                onSelect={() => {
-                  onSelect(shape.id);
-                }}
-                onChange={(newAttrs) => {
-                  const updatedShapes = shapes.slice();
-                  updatedShapes[i] = newAttrs;
-                  onChange(newAttrs);
-                }}
-                currentTime={currentTime}
-              />
-            );
-          } else if (shape.type === 'circle') {
-            return (
-              <CircleShape
-                key={i}
-                shapeProps={shape}
-                isSelected={shape.id === selectedId}
-                onSelect={() => {
-                  onSelect(shape.id);
-                }}
-                onChange={(newAttrs) => {
-                  const updatedShapes = shapes.slice();
-                  updatedShapes[i] = newAttrs;
-                  onChange(newAttrs);
-                }}
-                currentTime={currentTime}
-              />
-            );
-          }
-          return null;
-        })}
-      </Layer>
-    </Stage>
+    <div ref={drop} tabIndex={0} aria-label="Canvas area">
+      <Stage width={canvasSize.width} height={canvasSize.height}>
+        <Layer ref={layerRef}>
+          {topLevelComponents.map(component => renderComponent(component, shapes, setActiveFrame, links, canvasSize, transitions, activeState))}
+          {unassignedShapes.map(shape => renderShape(shape, setActiveFrame, links, canvasSize, transitions, activeState))}
+        </Layer>
+      </Stage>
+    </div>
   );
 };
 

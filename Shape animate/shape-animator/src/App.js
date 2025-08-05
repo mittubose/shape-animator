@@ -1,15 +1,13 @@
 import React from 'react';
-import { ThemeProvider } from 'styled-components';
-import { theme } from './theme';
-import { GlobalStyle } from './GlobalStyle';
-import Layout from './components/Layout';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import Editor from './components/Editor';
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <GlobalStyle />
-      <Layout />
-    </ThemeProvider>
+    <DndProvider backend={HTML5Backend}>
+      <Editor />
+    </DndProvider>
   );
 }
 
