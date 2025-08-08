@@ -1,13 +1,12 @@
 import { createGlobalStyle } from 'styled-components';
-import { theme } from './theme';
 
 export const GlobalStyle = createGlobalStyle`
   body {
     margin: 0;
     padding: 0;
-    background-color: ${theme.colors.background};
-    font-family: ${theme.fonts.primary};
-    color: ${theme.colors.textPrimary};
+    background-color: ${({ theme }) => theme.colors.background};
+    font-family: ${({ theme }) => theme.fonts.primary};
+    color: ${({ theme }) => theme.colors.textPrimary};
   }
 
   * {

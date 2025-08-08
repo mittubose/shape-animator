@@ -22,6 +22,7 @@ const ModalContent = styled.div`
 
 const AiModal = ({ show, onClose, onGenerate, isLoading }) => {
   const [prompt, setPrompt] = useState('');
+  const [generationType, setGenerationType] = useState('rectangle');
 
   if (!show) {
     return null;
@@ -31,8 +32,13 @@ const AiModal = ({ show, onClose, onGenerate, isLoading }) => {
     <ModalOverlay>
       <ModalContent>
         <h2>Generate with AI</h2>
+        <select value={generationType} onChange={(e) => setGenerationType(e.target.value)} disabled={isLoading}>
+          <option value="rectangle">Rectangle</option>
+          <option value="button">Button</option>
+          <option value="card">Card</option>
+        </select>
         <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} style={{ width: '100%', height: '100px' }} disabled={isLoading} />
-        <button onClick={() => onGenerate(prompt)} disabled={isLoading}>{isLoading ? 'Generating...' : 'Generate'}</button>
+        <button onClick={() => onGenerate(prompt, generationType)} disabled={isLoading}>{isLoading ? 'Generating...' : 'Generate'}</button>
         <button onClick={onClose} disabled={isLoading}>Close</button>
       </ModalContent>
     </ModalOverlay>

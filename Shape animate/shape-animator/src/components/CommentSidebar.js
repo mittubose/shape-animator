@@ -8,13 +8,27 @@ const CommentSidebarContainer = styled.div`
   padding: 10px;
 `;
 
-const CommentSidebar = () => {
-  const [comments, setComments] = useState([]);
+const Comment = styled.div`
+  margin-bottom: 10px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+`;
+
+const CommentAuthor = styled.div`
+  font-weight: bold;
+`;
+
+const CommentTimestamp = styled.div`
+  font-size: 0.8em;
+  color: #888;
+`;
+
+const CommentSidebar = ({ addComment, comments }) => {
   const [newComment, setNewComment] = useState('');
 
   const handleAddComment = () => {
     if (newComment.trim()) {
-      setComments([...comments, newComment]);
+      addComment(newComment);
       setNewComment('');
     }
   };
@@ -23,8 +37,12 @@ const CommentSidebar = () => {
     <CommentSidebarContainer>
       <h3>Comments</h3>
       <div>
-        {comments.map((comment, index) => (
-          <p key={index}>{comment}</p>
+        {comments.map((comment) => (
+          <Comment key={comment.id}>
+            <CommentAuthor>{comment.author}</CommentAuthor>
+            <CommentTimestamp>{comment.timestamp.toLocaleString()}</CommentTimestamp>
+            <p>{comment.text}</p>
+          </Comment>
         ))}
       </div>
       <textarea

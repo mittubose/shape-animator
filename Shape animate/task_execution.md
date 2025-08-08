@@ -1,34 +1,45 @@
-# Task Execution
+# Task Execution Log
 
-This file tracks the execution of each task. 
+This document logs the progress and execution details of tasks outlined in `tasks.md`.
 
-## Phase 1: Project Foundation & Core Animation
+## Phase 1: Core Functionality & Bug Fixes
 
-- [x] 1.1 Planning & Design
-- [x] 1.2 Set Up Codebase
-- [x] 1.3 Basic Animation Editor
-- [x] 1.4 Export MVP
+### Task: Fix: Rectangle selection on canvas.
+- **Date:** 2025-08-05
+- **Description:** Modified `Editor.js` to pass `setSelectedShape` to `Canvas`. Modified `Canvas.js` to pass `setSelectedShape` to `RenderShape` and `RenderComponent`. Modified `RenderShape.js` to use `setSelectedShape` in its `onClick` handler.
+- **Status:** Completed.
 
-## Phase 2: States, Transitions, & Prototyping
+### Task: Fix: Basic timeline integration (add keyframe button).
+- **Date:** 2025-08-05
+- **Description:** Modified `Editor.js` to pass `addKeyframe` and `selectedShape` to `TimelinePanel`. Modified `TimelinePanel.js` to pass these props to `Timeline.js`. Added a basic "Add X Keyframe" button in `Timeline.js` to demonstrate functionality.
+- **Status:** Completed.
 
-- [x] 2.1 State Machine System
-- [x] 2.2 Component & Prototyping Tools
-- [x] 2.3 Advanced Timeline Controls
+### Task: Feature: Implement Circle tool.
+- **Date:** 2025-08-05
+- **Description:** Added an "Add Circle" button to `Editor.js` and implemented the `addCircle` function. Modified `Canvas.js` to conditionally render `Circle` components based on `shape.type`.
+- **Status:** Completed.
 
-## Phase 3: Responsive, Interactivity & Cloud Export
+### Task: Feature: Implement basic shape editing (resize, reposition, property changes).
+- **Date:** 2025-08-05
+- **Description:** Implemented draggable functionality for shapes in `Canvas.js` by adding `draggable` prop and `onDragEnd` handler to `Rect` and `Circle` components. Added `setShapePosition` function to `Editor.js` to update shape coordinates in state.
+- **Status:** Completed.
 
-- [x] 3.1 Responsive Animation & Layout
-- [x] 3.2 Real-Time Interactivity
-- [x] 3.3 Enhanced Export Capabilities
+### Task: Feature: Implement Pen tool.
+- **Date:** 2025-08-05
+- **Description:** Added an "Add Pen" button to `Toolbox.js` and implemented the `addPen` function in `Editor.js`. Modified `Canvas.js` to conditionally render `Path` components based on `shape.type`.
+- **Status:** Completed.
 
-## Phase 4: Collaboration, Templates & Usability
+### Task: UI: Design and implement a dedicated tool section/panel.
+- **Date:** 2025-08-05
+- **Description:** Created `Toolbox.js` component and integrated it into `Editor.js`. Moved shape creation buttons to the new `Toolbox`.
+- **Status:** Completed.
 
-- [x] 4.1 Collaboration Tools
-- [x] 4.2 Templates, Libraries, & AI (Basic implementation complete)
-- [x] 4.3 Usability Enhancements
+### Task: UI: Ensure a functional selection tool.
+- **Date:** 2025-08-05
+- **Description:** Added a "Select" button to `Toolbox.js`. Implemented `activeTool` state in `Editor.js` to manage the currently active tool. Modified `Canvas.js` to enable/disable draggable behavior based on `activeTool`.
+- **Status:** Completed.
 
-## Phase 5: Testing, QA, Docs & Launch
-
-- [x] 5.1 Comprehensive Testing
-- [x] 5.2 Documentation & User Support
-- [x] 5.3 Deployment & Launch (Project Import/Export implemented)
+### Task: UI: Add appropriate icons for existing and new tools.
+- **Date:** 2025-08-05
+- **Description:** Replaced text labels with Unicode characters for icons in `Toolbox.js`.
+- **Status:** Completed.

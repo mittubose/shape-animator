@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { exportToLottie } from '../utils/lottieExporter';
+import { DownloadSimple, XCircle } from '@phosphor-icons/react';
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -27,7 +28,7 @@ const PreviewPanel = styled.div`
   margin-top: 10px;
 `;
 
-const ExportModal = ({ show, onClose, shapes, keyframes }) => {
+const ExportModal = ({ show, onClose, shapes, keyframes, canvasSize }) => {
   const [format, setFormat] = useState('lottie');
   const [resolution, setResolution] = useState('1x');
   const [transparent, setTransparent] = useState(false);
@@ -38,7 +39,7 @@ const ExportModal = ({ show, onClose, shapes, keyframes }) => {
 
   const handleExport = () => {
     if (format === 'lottie') {
-      const lottieData = exportToLottie(shapes, keyframes);
+      const lottieData = exportToLottie(shapes, keyframes, canvasSize);
       const blob = new Blob([JSON.stringify(lottieData)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -79,8 +80,8 @@ const ExportModal = ({ show, onClose, shapes, keyframes }) => {
           <p>File size: 123 KB</p>
           <p>Dimensions: 800x600</p>
         </PreviewPanel>
-        <button onClick={handleExport}>Export</button>
-        <button onClick={onClose}>Close</button>
+        <button onClick={handleExport}><DownloadSimple size={24} /> Export</button>
+        <button onClick={onClose}><XCircle size={24} /> Close</button>
       </ModalContent>
     </ModalOverlay>
   );

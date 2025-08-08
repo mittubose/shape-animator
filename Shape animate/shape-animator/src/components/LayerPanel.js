@@ -1,56 +1,117 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
+import { CaretRight, CaretDown, Eye, LockSimple, FolderSimple, Cube } from '@phosphor-icons/react';
 
 const LayerPanelContainer = styled.div`
-  width: 200px;
-  background-color: #ffffff;
-  border-right: 1px solid #e0e0e0;
-  padding: 10px;
+  width: 250px;
+  background-color: ${({ theme }) => theme.colors.surface};
+  border-right: 1px solid ${({ theme }) => theme.colors.border};
+  padding: ${({ theme }) => theme.spacing.sm};
+  display: flex;
+  flex-direction: column;
 `;
 
-const LayerItem = styled.div`
-  padding: 5px;
+const LayerPanelHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: ${({ theme }) => theme.spacing.sm};
+  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+`;
+
+const LayerList = styled.div`
+  flex-grow: 1;
+  overflow-y: auto;
+`;
+
+const LayerItemContainer = styled.div`
+  padding: ${({ theme }) => theme.spacing.xs} 0;
+  margin-left: ${({ level }) => level * 16}px;
   cursor: pointer;
-  background-color: ${({ selected }) => (selected ? '#e3f2fd' : 'transparent')};
-  margin-left: ${({ level }) => level * 10}px;
-`;
+  background-color: ${({ selected }) => (selected ? '#3a76f7' : 'transparent')};
 
-const ComponentItem = styled.div`
-  padding: 5px;
-  font-weight: bold;
-  margin-left: ${({ level }) => level * 10}px;
-`;
-
-const renderLayer = (item, level, setSelectedShape) => {
-  if (item.shapes) {
-    return (
-      <ComponentItem key={item.id} level={level} tabIndex={0} aria-label={`Component ${item.id}`}>
-        {item.id}
-        {item.shapes.map(shapeId => (
-          <LayerItem key={shapeId} level={level + 1} onClick={() => setSelectedShape(shapeId)} tabIndex={0} aria-label={`Shape ${shapeId}`}>
-            Shape {shapeId}
-          </LayerItem>
-        ))}
-        {item.children.map(child => renderLayer(child, level + 1, setSelectedShape))}
-      </ComponentItem>
-    );
-  } else {
-    return (
-      <LayerItem key={item.id} level={level} onClick={() => setSelectedShape(item.id)} tabIndex={0} aria-label={`Shape ${item.id}`}>
-        Shape {item.id}
-      </LayerItem>
-    );
+  &:hover {
+    background-color: ${({ theme }) => theme.colors.hover};
   }
-};
+`;
 
-const LayerPanel = ({ shapes, components, setSelectedShape }) => {
-  const topLevelItems = Object.values(components).filter(c => !Object.values(components).some(p => p.children.includes(c.id)));
-  const unassignedShapes = shapes.filter(shape => !Object.values(components).some(c => c.shapes.includes(shape.id)));
+const LayerItemContent = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.sm};
+`;
+
+const LayerPanelFooter = styled.div`
+  padding-top: ${({ theme }) => theme.spacing.sm};
+  border-top: 1px solid ${({ theme }) => theme.colors.border};
+`;
+
+const LayerItem = ({ item, level, setSelectedShape, selectedShapes }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  const handleToggle = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  const isComponent = !!item.shapes;
+  const children = isComponent ? item.shapes : item.children || [];
 
   return (
-    <LayerPanelContainer tabIndex={0} aria-label="Layers panel">
-      {topLevelItems.map(item => renderLayer(item, 0, setSelectedShape))}
-      {unassignedShapes.map(shape => renderLayer(shape, 0, setSelectedShape))}
+    <>
+      <LayerItemContainer
+        level={level}
+        selected={selectedShapes.includes(item.id)}
+        onClick={() => setSelectedShape(item.id)}
+      >
+        <LayerItemContent>
+          {isComponent && (
+            <button onClick={handleToggle}>{isExpanded ? <CaretDown size={16} /> : <CaretRight size={16} />}</button>
+          )}
+          <span>{isComponent ? <FolderSimple size={16} /> : <Cube size={16} />}</span>
+          <span>{item.id}</span>
+          <span><Eye size={16} /></span>
+          <span><LockSimple size={16} /></span>
+        </LayerItemContent>
+      </LayerItemContainer>
+      {isExpanded &&
+        children.map((childId) => {
+          // This is a simplified version. A real implementation would need to look up the child shape/component.
+          return null;
+        })}
+    </>
+  );
+};
+
+const LayerPanel = ({ shapes, components, setSelectedShape, selectedShapes, groupShapes, ungroupShapes }) => {
+  const topLevelItems = Object.values(components).filter(
+    (c) => !Object.values(components).some((p) => p.children.includes(c.id))
+  );
+  const unassignedShapes = shapes.filter(
+    (shape) => !Object.values(components).some((c) => c.shapes.includes(shape.id))
+  );
+
+  return (
+    <LayerPanelContainer>
+      <LayerPanelHeader>
+        <span>Layers</span>
+        <button onClick={() => groupShapes(selectedShapes)} disabled={selectedShapes.length <= 1}>
+          Group
+        </button>
+      </LayerPanelHeader>
+      <LayerList>
+        {[...topLevelItems, ...unassignedShapes].map((item) => (
+          <LayerItem
+            key={item.id}
+            item={item}
+            level={0}
+            setSelectedShape={setSelectedShape}
+            selectedShapes={selectedShapes}
+          />
+        ))}
+      </LayerList>
+      <LayerPanelFooter>
+        <button>New Trigger</button>
+      </LayerPanelFooter>
     </LayerPanelContainer>
   );
 };

@@ -1,5 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
+import Draggable from 'react-draggable';
+import { PlusCircle } from '@phosphor-icons/react';
 
 const TimelineContainer = styled.div`
   height: 100%;
@@ -24,6 +26,7 @@ const Playhead = styled.div`
   bottom: 0;
   width: 2px;
   background-color: red;
+  cursor: ew-resize;
 `;
 
 const Track = styled.div`
@@ -42,12 +45,27 @@ const Keyframe = styled.div`
   background-color: blue;
 `;
 
-const Timeline = ({ keyframes }) => {
+const Timeline = ({ keyframes, addKeyframe, selectedShape, currentTime, setCurrentTime }) => {
+  const handleDrag = (e, ui) => {
+    const newTime = Math.max(0, currentTime + ui.deltaX);
+    setCurrentTime(newTime);
+  };
+
   return (
     <TimelineContainer>
-      <TimelineHeader>Timeline</TimelineHeader>
+      <TimelineHeader>
+        Timeline - {currentTime.toFixed(2)}s
+        {selectedShape && (
+          <>
+            <button onClick={() => addKeyframe('x', currentTime)}><PlusCircle size={16} /> Add X Keyframe</button>
+            <button onClick={() => addKeyframe('y', currentTime)}><PlusCircle size={16} /> Add Y Keyframe</button>
+          </>
+        )}
+      </TimelineHeader>
       <TimelineContent>
-        <Playhead position={100} />
+        <Draggable axis="x" onDrag={handleDrag} position={{ x: currentTime, y: 0 }}>
+          <Playhead position={currentTime} />
+        </Draggable>
         {Object.keys(keyframes).map((shapeId) => (
           <div key={shapeId}>
             <h4>{shapeId}</h4>

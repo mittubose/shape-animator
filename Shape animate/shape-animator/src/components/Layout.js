@@ -273,8 +273,7 @@ const Layout = () => {
           onChange={updateElement}
           currentTime={currentTime}
           componentDefinitions={componentDefinitions}
-          canvasWidth={window.innerWidth - 500}
-          canvasHeight={window.innerHeight - 200}
+          canvasSize={{ width: window.innerWidth - 500, height: window.innerHeight - 200 }}
           frames={frames}
           updateFrame={updateFrame}
         />

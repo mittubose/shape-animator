@@ -1,27 +1,52 @@
-import React from 'react';
-import { Rect } from 'react-konva';
+import React, { useRef, useEffect } from 'react';
+import { Rect, Transformer } from 'react-konva';
 
-const Frame = ({ frameProps, isSelected, onSelect, onChange }) => {
+const Frame = ({ width, height, fill, onTransform, isSelected }) => {
+  const shapeRef = useRef();
+  const trRef = useRef();
+
+  useEffect(() => {
+    if (isSelected && trRef.current) {
+      trRef.current.nodes([shapeRef.current]);
+      trRef.current.getLayer().batchDraw();
+    }
+  }, [isSelected]);
+
   return (
-    <Rect
-      x={frameProps.x}
-      y={frameProps.y}
-      width={frameProps.width}
-      height={frameProps.height}
-      stroke="#ccc"
-      strokeWidth={1}
-      dash={[10, 5]} // Dashed border for frames
-      onClick={onSelect}
-      onTap={onSelect}
-      draggable
-      onDragEnd={(e) => {
-        onChange({
-          ...frameProps,
-          x: e.target.x(),
-          y: e.target.y(),
-        });
-      }}
-    />
+    <>
+      <Rect
+        ref={shapeRef}
+        width={width}
+        height={height}
+        fill={fill}
+        x={0}
+        y={0}
+        onTransformEnd={(e) => {
+          const node = shapeRef.current;
+          const scaleX = node.scaleX();
+          const scaleY = node.scaleY();
+
+          node.scaleX(1);
+          node.scaleY(1);
+          onTransform({
+            width: Math.max(5, node.width() * scaleX),
+            height: Math.max(5, node.height() * scaleY),
+          });
+        }}
+      />
+      {isSelected && (
+        <Transformer
+          ref={trRef}
+          boundBoxFunc={(oldBox, newBox) => {
+            // limit resize
+            if (newBox.width < 5 || newBox.height < 5) {
+              return oldBox;
+            }
+            return newBox;
+          }}
+        />
+      )}
+    </>
   );
 };
 
